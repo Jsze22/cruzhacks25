@@ -23,6 +23,7 @@ CURRENT_TIME = None
 class User(db.Model):
     id = db.Column(db.Integer, primary_key= True)
     username = db.Column(db.String(80), unique= True, nullable= False)
+    email = db.Column(db.String(120), unique = True, nullable = False)
     checkins = db.relationship('CheckIn', backref = 'user', lazy = True)
 
     def __repr__(self):
@@ -32,7 +33,7 @@ class User(db.Model):
 pacific = pytz.timezone("US/Pacific")
 
 class CheckIn(db.Model):
-    id = db.Column (db.Integer, primary_key = True)
+    row = db.Column (db.Integer, primary_key = True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
     lat = db.Column(db.Float, nullable = False)
     lng = db.Column(db.Float, nullable = False)
@@ -138,7 +139,7 @@ def check_in():
         return jsonify({"status": "Invalid", "message": "Incorrect attendance code"}), 403
 
     # Process data (like user_id, current location, timestamp)
-    user_location = data.get("location")
+    user_location = data.get("classroom")
 
     if not user_location:
         return jsonify({"status": "Error", "message": "No location provided"}), 400
@@ -150,9 +151,21 @@ def check_in():
     if user_lat is None or user_lng is None:
         return jsonify({"status": "Error", "message": "Incomplete location data"}), 400
     
-    user_id = data.get("user_id")
-    if not user_id:
-        return jsonify({"status": "Error", "message": "No user_id provided"}), 400
+    name = data.get("name")
+    email = data.get("email")
+    if not name:
+        return jsonify({"status": "Error", "message": "No name provided"}), 400
+    
+    if not email:
+        return jsonify({"status": "Error", "message": "No email provided"}), 400
+    
+    user = User.query.filter_by(email = email).first()
+    if not user:
+        user = User( email = email, username = name)
+        db.session.add(user)
+        db.session.commit()
+
+    user_id = user.id
     
     campus_lat = GEOfENCE["lat"]
     campus_lng = GEOfENCE["lng"]
@@ -169,9 +182,11 @@ def check_in():
     if distance <= radius:
         # the location is within the acceptable range.
         #log the valid check-in into a database
-        check_in_record = CheckIn(user_id=user_id, lat=user_lat, lng=user_lng, timestamp=datetime.now(pacific), distance=distance, arrival = arrival_status)
+        check_in_record = CheckIn(user_id = user_id, lat=user_lat, lng=user_lng, timestamp=datetime.now(pacific), distance=distance, arrival = arrival_status)
         db.session.add(check_in_record)
         db.session.commit()
+
+
         return jsonify({
             "status": "Valid",
             "message": "Check-in successful. Your location is within range.",

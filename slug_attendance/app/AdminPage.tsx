@@ -95,7 +95,7 @@ export default function AdminPage() {
     };
 
     try {
-      const response = await fetch('http://10.0.0.248:5001/api/setsession', {
+      const response = await fetch('http://10.0.0.19:5001/api/setsession', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

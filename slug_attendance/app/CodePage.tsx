@@ -96,9 +96,9 @@ export default function CodePage() {
 
     const payload = {
         code: adminCode,
+        email: email,
+        name: name,
         classroom: {
-          email: email,
-          name: name,
           lat: studentLat,
           lng: studentLong,
           radius: 1000,
@@ -106,7 +106,7 @@ export default function CodePage() {
     };
 
     try {
-        const response = await fetch('http://10.0.0.248:5001/api/setsession', {
+        const response = await fetch('http://10.0.0.19:5001/api/attendance', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
