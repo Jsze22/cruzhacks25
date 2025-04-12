@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 import math
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import pytz
 
 app = Flask(__name__)
@@ -17,6 +17,8 @@ db = SQLAlchemy(app)
 # In a production application, you'd want to store this in a database with expiration, etc.
 CURRENT_CODE = None
 GEOfENCE = {}
+CURRENT_TIME = None
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key= True)
@@ -36,6 +38,7 @@ class CheckIn(db.Model):
     lng = db.Column(db.Float, nullable = False)
     timestamp = db.Column(db.DateTime, nullable = False, default= lambda: datetime.now(pacific))
     distance = db.Column(db.Float)
+    arrival = db.Column(db.String, nullable = False)
 
 
     def __repr__(self):
@@ -77,7 +80,7 @@ def calc(lat1, lon1, lat2, lon2):
 
 @app.route('/api/setsession', methods=['POST'])
 def set_session():
-    global CURRENT_CODE, GEOfENCE
+    global CURRENT_CODE, GEOfENCE, CURRENT_TIME
     data = request.get_json()
     code = data.get("code")
     classroom = data.get("classroom")
@@ -101,13 +104,27 @@ def set_session():
         "lng": lng,
         "radius": radius,
     }
+    CURRENT_TIME = datetime.now(pacific)
     print(f"Set current attendance code: {CURRENT_CODE}")
     print(GEOfENCE)
-    return jsonify({"status": "Success", "message": "Attendance code set", "current_code": CURRENT_CODE, "classroom": GEOfENCE,})
+    return jsonify({"status": "Success", "message": "Attendance code set", "current_code": CURRENT_CODE, "classroom": GEOfENCE,"session_time" : CURRENT_TIME.isoformat()})
 
 
 @app.route('/api/attendance', methods=['POST'])
 def check_in():
+
+    student_time = datetime.now(pacific)
+
+
+    if CURRENT_TIME is not None:
+        if student_time - CURRENT_TIME > timedelta(seconds= 15):
+            arrival_status = "late"
+        else:
+            arrival_status = "on time"
+
+
+    
+    
     data = request.get_json()
 
     entered_code = data.get("code")
@@ -152,14 +169,15 @@ def check_in():
     if distance <= radius:
         # the location is within the acceptable range.
         #log the valid check-in into a database
-        check_in_record = CheckIn(user_id=user_id, lat=user_lat, lng=user_lng, timestamp=datetime.utcnow(), distance=distance)
+        check_in_record = CheckIn(user_id=user_id, lat=user_lat, lng=user_lng, timestamp=datetime.now(pacific), distance=distance, arrival = arrival_status)
         db.session.add(check_in_record)
         db.session.commit()
         return jsonify({
             "status": "Valid",
             "message": "Check-in successful. Your location is within range.",
             "distance": distance,
-            "data": data
+            "data": data,
+            "arrival": arrival_status
         })
     else:
         # the location is too far
