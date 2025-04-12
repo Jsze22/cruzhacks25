@@ -13,6 +13,10 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
+# Global variable to store the active attendance code
+# In a production application, you'd want to store this in a database with expiration, etc.
+CURRENT_CODE = None
+GEOfENCE = {}
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key= True)
@@ -37,11 +41,11 @@ class CheckIn(db.Model):
     def __repr__(self):
         return f"<Checkin user:{self.user_id} at {self.timestamp}>"
 
-GEOfENCE = {
-    "lat": 40.7128,
-    "lng": -74.0060,
-    "radius": 1000  # in meters
-}
+# GEOfENCE = {
+#     "lat": 40.7128,
+#     "lng": -74.0060,
+#     "radius": 1000  # in meters
+# }
 
 # GEOfENCE = {
 #     "lat": 100.7128,
@@ -67,14 +71,54 @@ def calc(lat1, lon1, lat2, lon2):
 
 
 
-@app.route('/api/geofence', methods=['GET'])
-def get_geofence():
-    return jsonify({"campus": {"lat": 40.7128, "lng": -74.0060, "radius": 1000}})
+# @app.route('/api/geofence', methods=['GET'])
+# def get_geofence():
+#     return jsonify({"campus": {"lat": 40.7128, "lng": -74.0060, "radius": 1000}})
+
+@app.route('/api/setsession', methods=['POST'])
+def set_session():
+    global CURRENT_CODE, GEOfENCE
+    data = request.get_json()
+    code = data.get("code")
+    classroom = data.get("classroom")
+
+    if not code or not classroom:
+        return jsonify({"status": "Error", "message": "Both code and classroom data must be provided"}), 400
+
+
+    # Extract classroom details
+    lat = classroom.get("lat")
+    lng = classroom.get("lng")
+    radius = classroom.get("radius")
+
+    if lat is None or lng is None or radius is None:
+        return jsonify({"status": "Error", "message": "Incomplete classroom information"}), 400
+
+
+    CURRENT_CODE = code
+    GEOfENCE = {
+        "lat": lat,
+        "lng": lng,
+        "radius": radius,
+    }
+    print(f"Set current attendance code: {CURRENT_CODE}")
+    print(GEOfENCE)
+    return jsonify({"status": "Success", "message": "Attendance code set", "current_code": CURRENT_CODE, "classroom": GEOfENCE,})
 
 
 @app.route('/api/attendance', methods=['POST'])
 def check_in():
     data = request.get_json()
+
+    entered_code = data.get("code")
+    if not entered_code:
+        return jsonify({"status": "Error", "message": "No attendance code provided"}), 400
+    
+    if CURRENT_CODE is None:
+        return jsonify({"status": "Error", "message": "Attendance code not set by teacher"}), 400
+    
+    if entered_code != CURRENT_CODE:
+        return jsonify({"status": "Invalid", "message": "Incorrect attendance code"}), 403
 
     # Process data (like user_id, current location, timestamp)
     user_location = data.get("location")
@@ -135,4 +179,4 @@ def check_in():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  #creates all defined tables if they don't exist
-    app.run(debug=True, port= 5001)
+    app.run(debug=True, port= 5001, host='0.0.0.0')

@@ -83,7 +83,7 @@ export default function AdminPage() {
   
     // Send the payload to your backend endpoint
     try {
-      const response = await fetch('http://localhost:5001/api/setsession', {
+      const response = await fetch('http://10.0.0.19:5001/api/setsession', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
