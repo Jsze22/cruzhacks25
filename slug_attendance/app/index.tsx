@@ -1,12 +1,24 @@
-import { View, StyleSheet, SafeAreaView, Text, Animated, Dimensions, ImageBackground } from 'react-native';
+import {
+  View,
+  StyleSheet,
+  SafeAreaView,
+  Text,
+  Animated,
+  Dimensions,
+} from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useEffect } from 'react';
 import { Image } from 'expo-image';
 import Button from '@/components/Button';
 
 const screenWidth = Dimensions.get('window').width;
+const screenHeight = Dimensions.get('window').height;
 const PlaceholderImage = require('@/assets/images/ucsc_campus.jpeg');
 const PatternBackground = require('@/assets/images/ucsc_logo.png');
+
+// CONFIG: adjust how many rows and columns for grid
+const GRID_ROWS = 14;
+const GRID_COLS = 10;
 
 export default function Index() {
   const router = useRouter();
@@ -14,18 +26,17 @@ export default function Index() {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  // Animate pattern background loop
+  // Infinite horizontal scroll
   useEffect(() => {
     Animated.loop(
       Animated.timing(scrollX, {
         toValue: -screenWidth,
-        duration: 8000,
+        duration: 7900,
         useNativeDriver: true,
       })
     ).start();
   }, []);
 
-  // Fade & slide-in page effect
   useFocusEffect(
     useCallback(() => {
       fadeAnim.setValue(0);
@@ -75,23 +86,49 @@ export default function Index() {
     ]).start(() => router.push('/AdminPage'));
   };
 
+  // Generates one grid block (to duplicate for scrolling)
+  const renderGrid = (keyPrefix: string) => {
+    return (
+      <View key={keyPrefix} style={styles.gridBlock}>
+        {Array.from({ length: GRID_ROWS }).map((_, row) => (
+          <View key={`${keyPrefix}-row-${row}`} style={styles.gridRow}>
+            {Array.from({ length: GRID_COLS }).map((_, col) => (
+              <Image
+                key={`${keyPrefix}-cell-${row}-${col}`}
+                source={PatternBackground}
+                style={styles.gridTile}
+                contentFit="contain"
+              />
+            ))}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      {/* Background Layer */}
-      <Animated.Image
-        source={PatternBackground}
-        resizeMode="repeat"
+      {/* Huge infinite scrolling background grid */}
+      <Animated.View
         style={[
-          styles.backgroundPattern,
+          styles.scrollingGrid,
           { transform: [{ translateX: scrollX }] },
         ]}
-      />
+      >
+        {renderGrid('main')}
+        {renderGrid('loop')}
+      </Animated.View>
 
       {/* Foreground Content */}
-      <Animated.View style={[styles.content, {
-        opacity: fadeAnim,
-        transform: [{ translateX: slideAnim }],
-      }]}>
+      <Animated.View
+        style={[
+          styles.content,
+          {
+            opacity: fadeAnim,
+            transform: [{ translateX: slideAnim }],
+          },
+        ]}
+      >
         <Text style={styles.title}>Slug Attendance</Text>
         <View style={styles.imageWrapper}>
           <Image source={PlaceholderImage} style={styles.image} />
@@ -111,11 +148,30 @@ const styles = StyleSheet.create({
     backgroundColor: '#121212',
     overflow: 'hidden',
   },
-  backgroundPattern: {
+  scrollingGrid: {
     position: 'absolute',
-    width: '200%',
+    flexDirection: 'row',
+    width: screenWidth * 2, // enough to scroll left continuously
     height: '100%',
     opacity: 0.08,
+    zIndex: -1,
+  },
+  gridBlock: {
+    width: screenWidth,
+    flexDirection: 'column',
+    padding: 0,
+    margin: 0,
+  },
+  gridRow: {
+    flexDirection: 'row',
+    padding: 0,
+    margin: 0,
+  },
+  gridTile: {
+    width: screenWidth / GRID_COLS,
+    height: screenHeight / GRID_ROWS,
+    margin: 0,
+    padding: 0,
   },
   content: {
     flex: 1,

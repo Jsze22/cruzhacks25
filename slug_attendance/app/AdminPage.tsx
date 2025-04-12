@@ -136,7 +136,7 @@ export default function AdminPage() {
 
         <View style={styles.buttonContainer}>
           <Button label="Generate Code" onPress={handleGenerate} />
-          <Button label="Back" onPress={handleBack} />
+          <Button label="Log Out" onPress={handleBack} />
         </View>
       </Animated.View>
     </SafeAreaView>

@@ -8,7 +8,7 @@ const screenWidth = Dimensions.get('window').width;
 
 export default function CodePage() {
   const router = useRouter();
-  const [code, setCode] = useState('');
+  const [code, setNewCode] = useState('');
   const [cruzID, setCruzID] = useState('');
   const [fullName, setFullName] = useState('');
 
@@ -72,6 +72,10 @@ export default function CodePage() {
     console.log("CruzID:", cruzID);
     console.log("Full Name:", fullName);
 
+    const adminCode = code;
+    const email = cruzID;
+    const name = fullName;
+
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       console.log('Permission to access location was denied');
@@ -80,14 +84,43 @@ export default function CodePage() {
 
     let location = await Location.getCurrentPositionAsync({});
     console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
+    const studentLat = location.coords.latitude;
+    const studentLong = location.coords.longitude;
 
     // Clear inputs
-    setCode('');
+    setNewCode('');
     setCruzID('');
     setFullName('');
 
     fadeInSuccessBanner();
-  };
+
+    const payload = {
+        code: adminCode,
+        classroom: {
+          email: email,
+          name: name,
+          lat: studentLat,
+          lng: studentLong,
+          radius: 1000,
+        },
+    };
+
+    try {
+        const response = await fetch('http://10.0.0.248:5001/api/setsession', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+  
+        const result = await response.json();
+        console.log("Session set response:", result);
+  
+        setNewCode('');
+        fadeInSuccessBanner();
+      } catch (error) {
+        console.error("Error setting session:", error);
+      }
+    };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -107,7 +140,7 @@ export default function CodePage() {
           placeholder="Type Attendance code"
           placeholderTextColor="#888"
           value={code}
-          onChangeText={setCode}
+          onChangeText={setNewCode}
         />
         <TextInput
           style={styles.input}
