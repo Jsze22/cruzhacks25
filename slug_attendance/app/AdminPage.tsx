@@ -54,22 +54,47 @@ export default function AdminPage() {
   // when submit button is pressed, code will be generated and location as well
   const handleGenerate = async () => {
     console.log("Admin created code:", newCode);
-
-    // variable for the code the admin generated
+  
     const adminCode = newCode;
-
+  
     let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          console.log('Permission to access location was denied');
-          return;
-        }
-      
-        let location = await Location.getCurrentPositionAsync({});
-        console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
-
-        // variables of latitude and longitude of admin
-        const adminLat = location.coords.latitude;
-        const adminLong = location.coords.longitude;
+    if (status !== 'granted') {
+      console.log('Permission to access location was denied');
+      return;
+    }
+  
+    let location = await Location.getCurrentPositionAsync({});
+    console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
+  
+    // Get teacher's current location
+    const adminLat = location.coords.latitude;
+    const adminLong = location.coords.longitude;
+  
+    // Build the payload with both code and classroom information.
+    // Here, 'radius' is hardcoded, but you could also obtain it from an input if needed.
+    const payload = {
+      code: adminCode,
+      classroom: {
+        lat: adminLat,
+        lng: adminLong,
+        radius: 1000
+      }
+    };
+  
+    // Send the payload to your backend endpoint
+    try {
+      const response = await fetch('http://localhost:5001/api/setsession', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+      const result = await response.json();
+      console.log("Session set response:", result);
+    } catch (error) {
+      console.error("Error setting session:", error);
+    }
   };
 
   return (
