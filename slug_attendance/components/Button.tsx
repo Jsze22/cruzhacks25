@@ -12,10 +12,10 @@ export default function Button({ label, onPress }: Props) {
 
   const handlePressIn = () => {
     Animated.spring(scale, {
-      toValue: 0.96,
+      toValue: 0.94,
       useNativeDriver: true,
-      speed: 50,
-      bounciness: 10,
+      speed: 40,
+      bounciness: 8,
     }).start();
   };
 
@@ -34,8 +34,9 @@ export default function Button({ label, onPress }: Props) {
           style={({ pressed }) => [
             styles.button,
             {
-              backgroundColor: pressed ? '#005fdb' : '#007aff',
-              shadowOpacity: pressed ? 0.1 : 0.3,
+              backgroundColor: pressed ? '#3399FF' : '#007AFF',
+              shadowOpacity: pressed ? 0.2 : 0.4,
+              transform: [{ scale: pressed ? 0.97 : 1 }],
             },
           ]}
           onPress={onPress}
@@ -53,28 +54,29 @@ const screenWidth = Dimensions.get('window').width;
 
 const styles = StyleSheet.create({
   buttonContainer: {
-    width: screenWidth - 40,
-    height: 68,
-    marginHorizontal: 20,
+    width: screenWidth - 60,
+    height: 60,
+    marginVertical: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 3,
   },
   button: {
-    borderRadius: 14,
+    borderRadius: 16,
     width: '100%',
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
+    backgroundColor: '#007AFF',
+    shadowColor: '#00BFFF',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.4,
+    shadowRadius: 20,
+    elevation: 10,
   },
   buttonLabel: {
     color: '#fff',
-    fontSize: 18,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '700',
+    letterSpacing: 0.5,
   },
 });

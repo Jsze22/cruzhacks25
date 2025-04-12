@@ -3,6 +3,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import Button from '@/components/Button';
 import { useState, useEffect } from 'react';
 import { Animated, Easing, Dimensions } from 'react-native';
+import * as Location from 'expo-location';
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -12,6 +13,7 @@ export default function CodePage() {
   const slideAnim = useState(new Animated.Value(100))[0];
   const fadeAnim = useState(new Animated.Value(0))[0];
 
+  // effects for transitioning to other pages
   useEffect(() => {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -28,6 +30,7 @@ export default function CodePage() {
     ]).start();
   }, [slideAnim, fadeAnim]);
 
+  // when back button is pressed it will go back to index.tsx with effects
   const handleLogout = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -44,8 +47,25 @@ export default function CodePage() {
     ]).start(() => router.push('/'));
   };
 
-  const handleSubmit = () => {
+  // when submit button is pressed, code will be sent and location as well
+  const handleSubmit = async () => {
     console.log("Submitted Code:", code);
+
+    // variable for the code the student put in
+    const studentCode = code;
+  
+    let { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      console.log('Permission to access location was denied');
+      return;
+    }
+  
+    let location = await Location.getCurrentPositionAsync({});
+    console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
+
+    // variables of latitude and longitude of student
+    const studentLat = location.coords.latitude;
+    const studentLong = location.coords.longitude;
   };
 
   return (
