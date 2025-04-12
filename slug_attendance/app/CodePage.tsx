@@ -1,8 +1,7 @@
-import { View, StyleSheet, SafeAreaView, Text, TextInput } from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
+import { View, StyleSheet, SafeAreaView, Text, TextInput, Animated, Easing, Dimensions } from 'react-native';
+import { useRouter } from 'expo-router';
 import Button from '@/components/Button';
-import { useState, useEffect } from 'react';
-import { Animated, Easing, Dimensions } from 'react-native';
+import { useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 
 const screenWidth = Dimensions.get('window').width;
@@ -10,10 +9,13 @@ const screenWidth = Dimensions.get('window').width;
 export default function CodePage() {
   const router = useRouter();
   const [code, setCode] = useState('');
-  const slideAnim = useState(new Animated.Value(100))[0];
-  const fadeAnim = useState(new Animated.Value(0))[0];
+  const [cruzID, setCruzID] = useState('');
+  const [fullName, setFullName] = useState('');
 
-  // effects for transitioning to other pages
+  const slideAnim = useRef(new Animated.Value(100)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -30,7 +32,6 @@ export default function CodePage() {
     ]).start();
   }, [slideAnim, fadeAnim]);
 
-  // when back button is pressed it will go back to index.tsx with effects
   const handleLogout = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -47,42 +48,82 @@ export default function CodePage() {
     ]).start(() => router.push('/'));
   };
 
-  // when submit button is pressed, code will be sent and location as well
-  const handleSubmit = async () => {
-    console.log("Submitted Code:", code);
+  const fadeInSuccessBanner = () => {
+    bannerOpacity.setValue(0);
+    Animated.timing(bannerOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => {
+        Animated.timing(bannerOpacity, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+      }, 3000);
+    });
+  };
 
-    // variable for the code the student put in
-    const studentCode = code;
-  
+  const handleSubmit = async () => {
+    if (!code.trim() || !cruzID.trim() || !fullName.trim()) return;
+
+    console.log("Submitted Code:", code);
+    console.log("CruzID:", cruzID);
+    console.log("Full Name:", fullName);
+
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       console.log('Permission to access location was denied');
       return;
     }
-  
+
     let location = await Location.getCurrentPositionAsync({});
     console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
 
-    // variables of latitude and longitude of student
-    const studentLat = location.coords.latitude;
-    const studentLong = location.coords.longitude;
+    // Clear inputs
+    setCode('');
+    setCruzID('');
+    setFullName('');
+
+    fadeInSuccessBanner();
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={{ 
-        ...styles.content, 
+      <Animated.View style={{
+        ...styles.content,
         transform: [{ translateX: slideAnim }],
         opacity: fadeAnim
       }}>
         <Text style={styles.title}>Enter Code</Text>
+
+        <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
+          <Text style={styles.successText}>Submitted successfully!</Text>
+        </Animated.View>
+
         <TextInput
           style={styles.input}
-          placeholder="Type your code"
+          placeholder="Type Attendance code"
           placeholderTextColor="#888"
           value={code}
           onChangeText={setCode}
         />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Your CruzID"
+          placeholderTextColor="#888"
+          value={cruzID}
+          onChangeText={setCruzID}
+        />
+        <TextInput
+          style={styles.input}
+          placeholder="Enter Your Full Name"
+          placeholderTextColor="#888"
+          value={fullName}
+          onChangeText={setFullName}
+        />
+
         <View style={styles.buttonContainer}>
           <Button label="Submit" onPress={handleSubmit} />
           <Button label="Log Out" onPress={handleLogout} />
@@ -127,5 +168,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 20,
-  },  
+  },
+  successBanner: {
+    backgroundColor: '#28a745',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: '80%',
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+  },
 });

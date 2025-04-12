@@ -1,8 +1,7 @@
-import { View, StyleSheet, SafeAreaView, Text, TextInput } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Text, TextInput, Animated, Easing, Dimensions } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Button from '@/components/Button';
 import { useState, useRef, useCallback } from 'react';
-import { Animated, Easing, Dimensions } from 'react-native';
 import * as Location from 'expo-location';
 
 const screenWidth = Dimensions.get('window').width;
@@ -13,7 +12,8 @@ export default function AdminPage() {
   const slideAnim = useRef(new Animated.Value(screenWidth)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // effects for transitioning to other pages
+  const bannerOpacity = useRef(new Animated.Value(0)).current;
+
   useFocusEffect(
     useCallback(() => {
       slideAnim.setValue(screenWidth);
@@ -34,7 +34,6 @@ export default function AdminPage() {
     }, [slideAnim, fadeAnim])
   );
 
-  // when back button is pressed it will go back to index.tsx with effects
   const handleBack = () => {
     Animated.parallel([
       Animated.timing(slideAnim, {
@@ -51,47 +50,62 @@ export default function AdminPage() {
     ]).start(() => router.push('/'));
   };
 
-  // when submit button is pressed, code will be generated and location as well
+  const fadeInSuccessBanner = () => {
+    bannerOpacity.setValue(0);
+    Animated.timing(bannerOpacity, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: true,
+    }).start(() => {
+      setTimeout(() => fadeOutSuccessBanner(), 4000);
+    });
+  };
+
+  const fadeOutSuccessBanner = () => {
+    Animated.timing(bannerOpacity, {
+      toValue: 0,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+  };
+
   const handleGenerate = async () => {
+    if (!newCode.trim()) return;
+
     console.log("Admin created code:", newCode);
-  
     const adminCode = newCode;
-  
+
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
       console.log('Permission to access location was denied');
       return;
     }
-  
+
     let location = await Location.getCurrentPositionAsync({});
-    console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
-  
-    // Get teacher's current location
     const adminLat = location.coords.latitude;
     const adminLong = location.coords.longitude;
-  
-    // Build the payload with both code and classroom information.
-    // Here, 'radius' is hardcoded, but you could also obtain it from an input if needed.
+
     const payload = {
       code: adminCode,
       classroom: {
         lat: adminLat,
         lng: adminLong,
-        radius: 1000
-      }
+        radius: 1000,
+      },
     };
-  
-    // Send the payload to your backend endpoint
+
     try {
-      const response = await fetch('http://10.0.0.19:5001/api/setsession', {
+      const response = await fetch('http://10.0.0.248:5001/api/setsession', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+
       const result = await response.json();
       console.log("Session set response:", result);
+
+      setNewCode('');
+      fadeInSuccessBanner();
     } catch (error) {
       console.error("Error setting session:", error);
     }
@@ -99,19 +113,27 @@ export default function AdminPage() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <Animated.View style={{
-        ...styles.content,
-        transform: [{ translateX: slideAnim }],
-        opacity: fadeAnim
-      }}>
+      <Animated.View
+        style={{
+          ...styles.content,
+          transform: [{ translateX: slideAnim }],
+          opacity: fadeAnim,
+        }}
+      >
         <Text style={styles.title}>Admin Code Generator</Text>
+
+        <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
+          <Text style={styles.successText}>Code generated successfully!</Text>
+        </Animated.View>
+
         <TextInput
           style={styles.input}
-          placeholder="Enter new code"
+          placeholder="Generate New Attendance Code"
           placeholderTextColor="#888"
           value={newCode}
           onChangeText={setNewCode}
         />
+
         <View style={styles.buttonContainer}>
           <Button label="Generate Code" onPress={handleGenerate} />
           <Button label="Back" onPress={handleBack} />
@@ -138,6 +160,18 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#fff',
     marginBottom: 20,
+  },
+  successBanner: {
+    backgroundColor: '#28a745',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: '80%',
+  },
+  successText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
   },
   input: {
     width: '80%',
