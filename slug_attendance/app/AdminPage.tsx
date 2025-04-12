@@ -3,8 +3,41 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import Button from '@/components/Button';
 import { useState, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
+import config from "../config";
+
+
+console.log("Backend URL:", config.BACKEND_URL);
+
 
 const screenWidth = Dimensions.get('window').width;
+
+interface SessionPayload {
+  code: string;
+  classroom: {
+    lat: number;
+    lng: number;
+    radius: number;
+  };
+}
+
+
+export async function setSession(payload :SessionPayload) {
+  try {
+    // Use the BACKEND_URL from your config file
+    const response = await fetch(`${config.BACKEND_URL}/api/setsession`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const result = await response.json();
+    console.log("Session set response:", result);
+    return result;  // Return the response data for further processing if needed
+  } catch (error) {
+    console.error("Error setting session:", error);
+    throw error;  // Rethrow so it can be caught in the caller if necessary
+  }
+}
+
 
 export default function AdminPage() {
   const router = useRouter();
@@ -95,13 +128,8 @@ export default function AdminPage() {
     };
 
     try {
-      const response = await fetch('http://10.0.0.19:5001/api/setsession', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
+      // Call the setSession function to send the payload to the back end
+      const result = await setSession(payload);
       console.log("Session set response:", result);
 
       setNewCode('');

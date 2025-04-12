@@ -1,9 +1,12 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.exc import IntegrityError
 import math
 from datetime import datetime, timezone, timedelta
 import pytz
+from dotenv import load_dotenv
+import os
 
 app = Flask(__name__)
 CORS(app)
@@ -12,6 +15,8 @@ CORS(app)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
+
+
 
 # Global variable to store the active attendance code
 # In a production application, you'd want to store this in a database with expiration, etc.
@@ -75,6 +80,16 @@ def calc(lat1, lon1, lat2, lon2):
 
 
 
+# @app.route('/api/config', methods=['GET'])
+# def get_config():
+#     # Automatically get the host and port from the incoming request.
+#     # request.host gives you something like '10.0.0.19:5001' or '192.0.0.2:5001'
+#     backend_url = f"http://{request.host}"
+#     return jsonify({"BACKEND_URL": backend_url})
+
+
+
+
 # @app.route('/api/geofence', methods=['GET'])
 # def get_geofence():
 #     return jsonify({"campus": {"lat": 40.7128, "lng": -74.0060, "radius": 1000}})
@@ -83,6 +98,8 @@ def calc(lat1, lon1, lat2, lon2):
 def set_session():
     global CURRENT_CODE, GEOfENCE, CURRENT_TIME
     data = request.get_json()
+
+    print (data)
     code = data.get("code")
     classroom = data.get("classroom")
 
@@ -127,6 +144,7 @@ def check_in():
     
     
     data = request.get_json()
+    print (data)
 
     entered_code = data.get("code")
     if not entered_code:
@@ -153,6 +171,7 @@ def check_in():
     
     name = data.get("name")
     email = data.get("email")
+    email = email.strip().lower()
     if not name:
         return jsonify({"status": "Error", "message": "No name provided"}), 400
     
@@ -161,9 +180,15 @@ def check_in():
     
     user = User.query.filter_by(email = email).first()
     if not user:
-        user = User( email = email, username = name)
-        db.session.add(user)
-        db.session.commit()
+        try:
+            user = User( email = email, username = name)
+            db.session.add(user)
+            db.session.commit()
+            print("new user")
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({"status": "Error", "message" : "User already signed in "}), 400
+
 
     user_id = user.id
     
