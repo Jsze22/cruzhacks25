@@ -67,7 +67,17 @@ export default function Index() {
       }
     }, 10000); // check every 10 seconds
 
-    return () => clearInterval(interval);
+    const subscription = Notifications.addNotificationResponseReceivedListener(response => {
+      const screen = response.notification.request.content.data?.screen;
+      if (screen === 'ETAPage') {
+        router.push('/ETAPage');
+      }
+    });
+
+    return () => {
+      clearInterval(interval);
+      subscription.remove();
+    };
   }, []);
 
   useEffect(() => {
@@ -186,14 +196,14 @@ export default function Index() {
           },
         ]}
       >
-        <Text style={styles.title}>Slug Attendance</Text>
+        <Text style={styles.title}>Banana Roll Call</Text>
         <View style={styles.imageWrapper}>
           <Image source={PlaceholderImage} style={styles.image} />
         </View>
         <View style={styles.footerContainer}>
           <Button label="Student Login" onPress={handleLogin} />
           <Button label="Admin Login" onPress={handleAdmin} />
-          <Button label="Estimated ETA" onPress={handleEstimate} />
+          <Button label="UCSC Location ETA" onPress={handleEstimate} />
         </View>
       </Animated.View>
     </SafeAreaView>

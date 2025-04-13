@@ -103,6 +103,22 @@ export default function AdminPage() {
     ]).start(() => router.push('/'));
   };
 
+  const handleSeeTable = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -screenWidth,
+        duration: 400,
+        easing: Easing.in(Easing.ease),
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start(() => router.push('/TablePage'));
+  };
+
   const fadeInBanner = (bannerRef: Animated.Value, duration = 4000) => {
     bannerRef.setValue(0);
     Animated.timing(bannerRef, {
@@ -169,7 +185,7 @@ export default function AdminPage() {
             opacity: fadeAnim,
           }}
         >
-          <Text style={styles.title}>Admin Code Generator</Text>
+          <Text style={[styles.title, { textAlign: 'center' }]}>Admin Attendance Code{"\n"}Generator</Text>
 
           <Animated.View style={[styles.errorBanner, { opacity: errorBannerOpacity }]}>
             <Text style={styles.errorText}>Please enter a code before generating.</Text>
@@ -190,6 +206,7 @@ export default function AdminPage() {
           <View style={styles.buttonContainer}>
             <Button label="Generate Code" onPress={handleGenerate} />
             <Button label="Generate Late Report" onPress={downloadLateReport} />
+            <Button label="See Table" onPress={handleSeeTable} />
             <Button label="Log Out" onPress={handleBack} />
           </View>
         </Animated.View>

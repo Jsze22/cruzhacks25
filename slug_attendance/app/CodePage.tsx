@@ -113,7 +113,7 @@ export default function CodePage() {
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
       <SafeAreaView style={styles.container}>
         <Animated.View style={{ ...styles.content, transform: [{ translateX: slideAnim }], opacity: fadeAnim }}>
-          <Text style={styles.title}>Enter Code</Text>
+          <Text style={styles.title}>Enter Attendance Code</Text>
 
           <Animated.View style={[styles.errorBanner, { opacity: errorBannerOpacity }]}>
             <Text style={styles.errorText}>Please fill in all fields before submitting.</Text>
