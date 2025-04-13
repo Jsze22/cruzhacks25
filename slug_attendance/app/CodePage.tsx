@@ -4,6 +4,7 @@ import Button from '@/components/Button';
 import { useState, useEffect, useRef } from 'react';
 import * as Location from 'expo-location';
 import config from "../config";
+import { Keyboard, TouchableWithoutFeedback } from 'react-native';
 
 console.log("Backend URL:", config.BACKEND_URL);
 
@@ -153,46 +154,49 @@ export default function CodePage() {
 
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Animated.View style={{
-        ...styles.content,
-        transform: [{ translateX: slideAnim }],
-        opacity: fadeAnim
-      }}>
-        <Text style={styles.title}>Enter Code</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+  <SafeAreaView style={styles.container}>
+    <Animated.View style={{
+      ...styles.content,
+      transform: [{ translateX: slideAnim }],
+      opacity: fadeAnim
+    }}>
+      <Text style={styles.title}>Enter Code</Text>
 
-        <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
-          <Text style={styles.successText}>Submitted successfully!</Text>
-        </Animated.View>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Type Attendance code"
-          placeholderTextColor="#888"
-          value={code}
-          onChangeText={setNewCode}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Your CruzID"
-          placeholderTextColor="#888"
-          value={cruzID}
-          onChangeText={setCruzID}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Enter Your Full Name"
-          placeholderTextColor="#888"
-          value={fullName}
-          onChangeText={setFullName}
-        />
-
-        <View style={styles.buttonContainer}>
-          <Button label="Submit" onPress={handleSubmit} />
-          <Button label="Log Out" onPress={handleLogout} />
-        </View>
+      <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
+        <Text style={styles.successText}>Submitted successfully!</Text>
       </Animated.View>
-    </SafeAreaView>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Type Attendance code"
+        placeholderTextColor="#888"
+        value={code}
+        onChangeText={setNewCode}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Enter Your CruzID"
+        placeholderTextColor="#888"
+        value={cruzID}
+        onChangeText={setCruzID}
+      />
+      <TextInput
+        style={styles.input}
+        placeholder="Enter Your Full Name"
+        placeholderTextColor="#888"
+        value={fullName}
+        onChangeText={setFullName}
+      />
+
+      <View style={styles.buttonContainer}>
+        <Button label="Submit" onPress={handleSubmit} />
+        <Button label="Log Out" onPress={handleLogout} />
+      </View>
+    </Animated.View>
+  </SafeAreaView>
+</TouchableWithoutFeedback>
+
   );
 }
 

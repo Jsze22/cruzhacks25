@@ -10,13 +10,21 @@ import { useRouter, useFocusEffect } from 'expo-router';
 import { useRef, useCallback, useEffect } from 'react';
 import { Image } from 'expo-image';
 import Button from '@/components/Button';
+import * as Notifications from 'expo-notifications';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const screenWidth = Dimensions.get('window').width;
 const screenHeight = Dimensions.get('window').height;
 const PlaceholderImage = require('@/assets/images/ucsc_campus.jpeg');
 const PatternBackground = require('@/assets/images/ucsc_logo.png');
 
-// CONFIG: adjust how many rows and columns for grid
 const GRID_ROWS = 14;
 const GRID_COLS = 10;
 
@@ -26,7 +34,6 @@ export default function Index() {
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current;
 
-  // Infinite horizontal scroll
   useEffect(() => {
     Animated.loop(
       Animated.timing(scrollX, {
@@ -86,7 +93,21 @@ export default function Index() {
     ]).start(() => router.push('/AdminPage'));
   };
 
-  // Generates one grid block (to duplicate for scrolling)
+  const handleEstimate = () => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: -screenWidth,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start(() => router.push('/ETAPage'));
+  };
+
   const renderGrid = (keyPrefix: string) => {
     return (
       <View key={keyPrefix} style={styles.gridBlock}>
@@ -108,7 +129,7 @@ export default function Index() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Huge infinite scrolling background grid */}
+      {/* Background Grid */}
       <Animated.View
         style={[
           styles.scrollingGrid,
@@ -136,6 +157,7 @@ export default function Index() {
         <View style={styles.footerContainer}>
           <Button label="Student Login" onPress={handleLogin} />
           <Button label="Admin Login" onPress={handleAdmin} />
+          <Button label="Estimated ETA" onPress={handleEstimate} />
         </View>
       </Animated.View>
     </SafeAreaView>
@@ -151,7 +173,7 @@ const styles = StyleSheet.create({
   scrollingGrid: {
     position: 'absolute',
     flexDirection: 'row',
-    width: screenWidth * 2, // enough to scroll left continuously
+    width: screenWidth * 2,
     height: '100%',
     opacity: 0.08,
     zIndex: -1,

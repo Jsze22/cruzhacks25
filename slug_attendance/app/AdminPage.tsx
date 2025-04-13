@@ -4,6 +4,7 @@ import Button from '@/components/Button';
 import { useState, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
 import config from "../config";
+import { Keyboard, TouchableWithoutFeedback } from 'react-native';
 
 
 console.log("Backend URL:", config.BACKEND_URL);
@@ -140,34 +141,36 @@ export default function AdminPage() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Animated.View
-        style={{
-          ...styles.content,
-          transform: [{ translateX: slideAnim }],
-          opacity: fadeAnim,
-        }}
-      >
-        <Text style={styles.title}>Admin Code Generator</Text>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+  <SafeAreaView style={styles.container}>
+    <Animated.View
+      style={{
+        ...styles.content,
+        transform: [{ translateX: slideAnim }],
+        opacity: fadeAnim,
+      }}
+    >
+      <Text style={styles.title}>Admin Code Generator</Text>
 
-        <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
-          <Text style={styles.successText}>Code generated successfully!</Text>
-        </Animated.View>
-
-        <TextInput
-          style={styles.input}
-          placeholder="Generate New Attendance Code"
-          placeholderTextColor="#888"
-          value={newCode}
-          onChangeText={setNewCode}
-        />
-
-        <View style={styles.buttonContainer}>
-          <Button label="Generate Code" onPress={handleGenerate} />
-          <Button label="Log Out" onPress={handleBack} />
-        </View>
+      <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
+        <Text style={styles.successText}>Code generated successfully!</Text>
       </Animated.View>
-    </SafeAreaView>
+
+      <TextInput
+        style={styles.input}
+        placeholder="Generate New Attendance Code"
+        placeholderTextColor="#888"
+        value={newCode}
+        onChangeText={setNewCode}
+      />
+
+      <View style={styles.buttonContainer}>
+        <Button label="Generate Code" onPress={handleGenerate} />
+        <Button label="Log Out" onPress={handleBack} />
+      </View>
+    </Animated.View>
+  </SafeAreaView>
+</TouchableWithoutFeedback>
   );
 }
 
