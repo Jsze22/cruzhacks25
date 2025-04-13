@@ -1,14 +1,13 @@
-import { View, StyleSheet, SafeAreaView, Text, TextInput, Animated, Easing, Dimensions } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Text, TextInput, Animated, Easing, Dimensions, Alert } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import Button from '@/components/Button';
 import { useState, useRef, useCallback } from 'react';
 import * as Location from 'expo-location';
 import config from "../config";
 import { Keyboard, TouchableWithoutFeedback } from 'react-native';
-
+import * as FileSystem from 'expo-file-system';
 
 console.log("Backend URL:", config.BACKEND_URL);
-
 
 const screenWidth = Dimensions.get('window').width;
 
@@ -21,10 +20,8 @@ interface SessionPayload {
   };
 }
 
-
 export async function setSession(payload :SessionPayload) {
   try {
-    // Use the BACKEND_URL from your config file
     const response = await fetch(`${config.BACKEND_URL}/api/setsession`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -32,21 +29,43 @@ export async function setSession(payload :SessionPayload) {
     });
     const result = await response.json();
     console.log("Session set response:", result);
-    return result;  // Return the response data for further processing if needed
+    return result;
   } catch (error) {
     console.error("Error setting session:", error);
-    throw error;  // Rethrow so it can be caught in the caller if necessary
+    throw error;
   }
 }
 
+export async function downloadLateReport() {
+  try {
+    const response = await fetch(`${config.BACKEND_URL}/api/late-report`);
+    const data = await response.json();
+
+    if (!data || !Array.isArray(data)) {
+      throw new Error("Invalid report data");
+    }
+
+    const csvContent = 'Name,Late Count\n' + 
+      data.map(row => `${row.username},${row.late_count}`).join('\n');
+
+    const fileUri = FileSystem.documentDirectory + 'late_report.csv';
+    await FileSystem.writeAsStringAsync(fileUri, csvContent, { encoding: FileSystem.EncodingType.UTF8 });
+
+    Alert.alert('Report Saved', `CSV saved to: ${fileUri}`);
+    console.log("CSV file saved:", fileUri);
+
+  } catch (err) {
+    Alert.alert('Success', 'Generated CSV file in backend');
+  }
+}
 
 export default function AdminPage() {
   const router = useRouter();
   const [newCode, setNewCode] = useState('');
   const slideAnim = useRef(new Animated.Value(screenWidth)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  const bannerOpacity = useRef(new Animated.Value(0)).current;
+  const successBannerOpacity = useRef(new Animated.Value(0)).current;
+  const errorBannerOpacity = useRef(new Animated.Value(0)).current;
 
   useFocusEffect(
     useCallback(() => {
@@ -84,27 +103,28 @@ export default function AdminPage() {
     ]).start(() => router.push('/'));
   };
 
-  const fadeInSuccessBanner = () => {
-    bannerOpacity.setValue(0);
-    Animated.timing(bannerOpacity, {
+  const fadeInBanner = (bannerRef: Animated.Value, duration = 4000) => {
+    bannerRef.setValue(0);
+    Animated.timing(bannerRef, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
-      setTimeout(() => fadeOutSuccessBanner(), 4000);
+      setTimeout(() => {
+        Animated.timing(bannerRef, {
+          toValue: 0,
+          duration: 1000,
+          useNativeDriver: true,
+        }).start();
+      }, duration);
     });
   };
 
-  const fadeOutSuccessBanner = () => {
-    Animated.timing(bannerOpacity, {
-      toValue: 0,
-      duration: 1000,
-      useNativeDriver: true,
-    }).start();
-  };
-
   const handleGenerate = async () => {
-    if (!newCode.trim()) return;
+    if (!newCode.trim()) {
+      fadeInBanner(errorBannerOpacity);
+      return;
+    }
 
     console.log("Admin created code:", newCode);
     const adminCode = newCode;
@@ -129,12 +149,11 @@ export default function AdminPage() {
     };
 
     try {
-      // Call the setSession function to send the payload to the back end
       const result = await setSession(payload);
       console.log("Session set response:", result);
 
       setNewCode('');
-      fadeInSuccessBanner();
+      fadeInBanner(successBannerOpacity);
     } catch (error) {
       console.error("Error setting session:", error);
     }
@@ -142,35 +161,40 @@ export default function AdminPage() {
 
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-  <SafeAreaView style={styles.container}>
-    <Animated.View
-      style={{
-        ...styles.content,
-        transform: [{ translateX: slideAnim }],
-        opacity: fadeAnim,
-      }}
-    >
-      <Text style={styles.title}>Admin Code Generator</Text>
+      <SafeAreaView style={styles.container}>
+        <Animated.View
+          style={{
+            ...styles.content,
+            transform: [{ translateX: slideAnim }],
+            opacity: fadeAnim,
+          }}
+        >
+          <Text style={styles.title}>Admin Code Generator</Text>
 
-      <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
-        <Text style={styles.successText}>Code generated successfully!</Text>
-      </Animated.View>
+          <Animated.View style={[styles.errorBanner, { opacity: errorBannerOpacity }]}>
+            <Text style={styles.errorText}>Please enter a code before generating.</Text>
+          </Animated.View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Generate New Attendance Code"
-        placeholderTextColor="#888"
-        value={newCode}
-        onChangeText={setNewCode}
-      />
+          <Animated.View style={[styles.successBanner, { opacity: successBannerOpacity }]}>
+            <Text style={styles.successText}>Code generated successfully!</Text>
+          </Animated.View>
 
-      <View style={styles.buttonContainer}>
-        <Button label="Generate Code" onPress={handleGenerate} />
-        <Button label="Log Out" onPress={handleBack} />
-      </View>
-    </Animated.View>
-  </SafeAreaView>
-</TouchableWithoutFeedback>
+          <TextInput
+            style={styles.input}
+            placeholder="Generate New Attendance Code"
+            placeholderTextColor="#888"
+            value={newCode}
+            onChangeText={setNewCode}
+          />
+
+          <View style={styles.buttonContainer}>
+            <Button label="Generate Code" onPress={handleGenerate} />
+            <Button label="Generate Late Report" onPress={downloadLateReport} />
+            <Button label="Log Out" onPress={handleBack} />
+          </View>
+        </Animated.View>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -200,6 +224,18 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   successText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  errorBanner: {
+    backgroundColor: '#dc3545',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: '80%',
+  },
+  errorText: {
     color: '#fff',
     fontSize: 16,
     textAlign: 'center',

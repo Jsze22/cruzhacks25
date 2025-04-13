@@ -10,37 +10,6 @@ console.log("Backend URL:", config.BACKEND_URL);
 
 const screenWidth = Dimensions.get('window').width;
 
-interface SessionPayload {
-  code: string;
-  email: string
-  name:string
-  classroom: {
-    lat: number;
-    lng: number;
-    radius: number;
-  };
-}
-
-
-
-export async function setSession(payload :SessionPayload) {
-  try {
-    // Use the BACKEND_URL from your config file
-    const response = await fetch(`${config.BACKEND_URL}/api/attendance`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const result = await response.json();
-    console.log("Session set response:", result);
-    return result;  // Return the response data for further processing if needed
-  } catch (error) {
-    console.error("Error setting session:", error);
-    throw error;  // Rethrow so it can be caught in the caller if necessary
-  }
-}
-
-
 export default function CodePage() {
   const router = useRouter();
   const [code, setNewCode] = useState('');
@@ -49,7 +18,8 @@ export default function CodePage() {
 
   const slideAnim = useRef(new Animated.Value(100)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const bannerOpacity = useRef(new Animated.Value(0)).current;
+  const successBannerOpacity = useRef(new Animated.Value(0)).current;
+  const errorBannerOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -83,33 +53,28 @@ export default function CodePage() {
     ]).start(() => router.push('/'));
   };
 
-  const fadeInSuccessBanner = () => {
-    bannerOpacity.setValue(0);
-    Animated.timing(bannerOpacity, {
+  const fadeInBanner = (bannerRef: Animated.Value, duration = 4000) => {
+    bannerRef.setValue(0);
+    Animated.timing(bannerRef, {
       toValue: 1,
       duration: 300,
       useNativeDriver: true,
     }).start(() => {
       setTimeout(() => {
-        Animated.timing(bannerOpacity, {
+        Animated.timing(bannerRef, {
           toValue: 0,
           duration: 1000,
           useNativeDriver: true,
         }).start();
-      }, 3000);
+      }, duration);
     });
   };
 
   const handleSubmit = async () => {
-    if (!code.trim() || !cruzID.trim() || !fullName.trim()) return;
-
-    console.log("Submitted Code:", code);
-    console.log("CruzID:", cruzID);
-    console.log("Full Name:", fullName);
-
-    const adminCode = code;
-    const email = cruzID;
-    const name = fullName;
+    if (!code.trim() || !cruzID.trim() || !fullName.trim()) {
+      fadeInBanner(errorBannerOpacity);
+      return;
+    }
 
     let { status } = await Location.requestForegroundPermissionsAsync();
     if (status !== 'granted') {
@@ -118,85 +83,57 @@ export default function CodePage() {
     }
 
     let location = await Location.getCurrentPositionAsync({});
-    console.log(`Latitude: ${location.coords.latitude}\nLongitude: ${location.coords.longitude}`);
-    const studentLat = location.coords.latitude;
-    const studentLong = location.coords.longitude;
-
-    // Clear inputs
-    setNewCode('');
-    setCruzID('');
-    setFullName('');
-
-    fadeInSuccessBanner();
-
     const payload = {
-        code: adminCode,
-        email: email,
-        name: name,
-        classroom: {
-          lat: studentLat,
-          lng: studentLong,
-          radius: 1000,
-        },
+      code,
+      email: cruzID,
+      name: fullName,
+      classroom: {
+        lat: location.coords.latitude,
+        lng: location.coords.longitude,
+        radius: 1000,
+      },
     };
 
     try {
-      // Call the setSession function to send the payload to the back end
-      const result = await setSession(payload);
-      console.log("Session set response:", result);
-
+      await fetch(`${config.BACKEND_URL}/api/attendance`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
       setNewCode('');
-      fadeInSuccessBanner();
+      setCruzID('');
+      setFullName('');
+      fadeInBanner(successBannerOpacity);
     } catch (error) {
       console.error("Error setting session:", error);
     }
   };
 
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
-  <SafeAreaView style={styles.container}>
-    <Animated.View style={{
-      ...styles.content,
-      transform: [{ translateX: slideAnim }],
-      opacity: fadeAnim
-    }}>
-      <Text style={styles.title}>Enter Code</Text>
+      <SafeAreaView style={styles.container}>
+        <Animated.View style={{ ...styles.content, transform: [{ translateX: slideAnim }], opacity: fadeAnim }}>
+          <Text style={styles.title}>Enter Code</Text>
 
-      <Animated.View style={[styles.successBanner, { opacity: bannerOpacity }]}>
-        <Text style={styles.successText}>Submitted successfully!</Text>
-      </Animated.View>
+          <Animated.View style={[styles.errorBanner, { opacity: errorBannerOpacity }]}>
+            <Text style={styles.errorText}>Please fill in all fields before submitting.</Text>
+          </Animated.View>
 
-      <TextInput
-        style={styles.input}
-        placeholder="Type Attendance code"
-        placeholderTextColor="#888"
-        value={code}
-        onChangeText={setNewCode}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Your CruzID"
-        placeholderTextColor="#888"
-        value={cruzID}
-        onChangeText={setCruzID}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Enter Your Full Name"
-        placeholderTextColor="#888"
-        value={fullName}
-        onChangeText={setFullName}
-      />
+          <Animated.View style={[styles.successBanner, { opacity: successBannerOpacity }]}>
+            <Text style={styles.successText}>Submitted successfully!</Text>
+          </Animated.View>
 
-      <View style={styles.buttonContainer}>
-        <Button label="Submit" onPress={handleSubmit} />
-        <Button label="Log Out" onPress={handleLogout} />
-      </View>
-    </Animated.View>
-  </SafeAreaView>
-</TouchableWithoutFeedback>
+          <TextInput style={styles.input} placeholder="Type Attendance code" placeholderTextColor="#888" value={code} onChangeText={setNewCode} />
+          <TextInput style={styles.input} placeholder="Enter Your CruzID" placeholderTextColor="#888" value={cruzID} onChangeText={setCruzID} />
+          <TextInput style={styles.input} placeholder="Enter Your Full Name" placeholderTextColor="#888" value={fullName} onChangeText={setFullName} />
 
+          <View style={styles.buttonContainer}>
+            <Button label="Submit" onPress={handleSubmit} />
+            <Button label="Log Out" onPress={handleLogout} />
+          </View>
+        </Animated.View>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -244,6 +181,18 @@ const styles = StyleSheet.create({
     width: '80%',
   },
   successText: {
+    color: '#fff',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  errorBanner: {
+    backgroundColor: '#dc3545',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    width: '80%',
+  },
+  errorText: {
     color: '#fff',
     fontSize: 16,
     textAlign: 'center',
