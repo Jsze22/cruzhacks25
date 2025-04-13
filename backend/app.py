@@ -8,6 +8,8 @@ import pytz
 from dotenv import load_dotenv
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
+import csv
+
 
 scheduler = BackgroundScheduler()
 
@@ -97,6 +99,37 @@ class CheckIn(db.Model):
 #         print("Warning Reminder time is in the past; ping is not scheduled")
     
 #     return {"status": "Ping scheduled", "reminder_time": reminder_time.isoformat()}
+
+
+@app.route('/api/late-report', methods=['GET'])
+def generate_late_report():
+    # Count late check-ins grouped by user
+    late_counts = (
+        db.session.query(User.username, db.func.count(CheckIn.row).label('late_count'))
+        .join(CheckIn)
+        .filter(CheckIn.arrival == 'late')
+        .group_by(User.username)
+        .having(db.func.count(CheckIn.row) > 0)
+        .all()
+    )
+
+    if not late_counts:
+        return jsonify({"status": "No late users found"})
+
+    # Write to CSV
+    filepath = 'late_report.csv'
+    with open(filepath, mode='w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['Username', 'Late Count'])
+        for username, count in late_counts:
+            writer.writerow([username, count])
+
+    return jsonify({
+        "status": "Report generated",
+        "file": filepath,
+        "late_users": [{"username": u, "late_count": c} for u, c in late_counts]
+    })
+
 
 REMINDER_TIME = None
 SHOULD_PING = False
