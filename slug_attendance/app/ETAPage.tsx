@@ -14,6 +14,8 @@ import * as Location from 'expo-location';
 import axios from 'axios';
 import Button from '@/components/Button';
 
+const ButtonBackground = require('@/assets/images/ucsc_campus.jpeg'); // any image
+
 const screenWidth = Dimensions.get('window').width;
 const MAPBOX_ACCESS_TOKEN = 'pk.eyJ1IjoiYWNoYW5nOTMiLCJhIjoiY205ZXZtZ2M3MWY0ODJrcTNnYmltZ3V6ZSJ9.4XCPQXC4LrOhw4jKQTRUxw'; // <-- Replace this
 
@@ -25,7 +27,8 @@ const LOCATIONS = [
   { label: 'To UCSC Quarry Plaza', lat: 36.997713713698154, lng: -122.0557358855456 },
   { label: 'To Humanities Lecture Hall', lat: 36.99841701963989, lng: -122.05455067787442 },
   { label: 'To Media Theater', lat: 36.995261396975565, lng: -122.06167032277186 },
-  { label: 'To Kresge Lecture Hall', lat: 36.99897771975638, lng: -122.06628049548692},
+  { label: 'To Kresge Lecture Hall', lat: 36.99897771975638, lng: -122.06628049548692 },
+  { label: 'To Thimann Lecture Hall', lat: 36.99802395749992, lng: -122.0613313385315 },
 ];
 
 export default function ETAPage() {
@@ -48,7 +51,7 @@ export default function ETAPage() {
         }),
         Animated.timing(fadeAnim, {
           toValue: 1,
-          duration: 500,
+          duration: 250,
           useNativeDriver: true,
         }),
       ]).start();
@@ -144,13 +147,14 @@ export default function ETAPage() {
         <Text style={styles.title}>Estimate Travel Time</Text>
 
         <ScrollView contentContainerStyle={styles.buttonContainer}>
-          {LOCATIONS.map((loc, idx) => (
-            <Button
-              key={idx}
-              label={loc.label}
-              onPress={() => handleEstimate(loc.lat, loc.lng, loc.label)}
-            />
-          ))}
+            {LOCATIONS.map((loc, idx) => (
+                <Button
+                key={idx}
+                label={loc.label}
+                onPress={() => handleEstimate(loc.lat, loc.lng, loc.label)}
+                backgroundImage={ButtonBackground}
+              />
+            ))}
         </ScrollView>
 
         <View style={styles.backButtonWrapper}>
