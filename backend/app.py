@@ -7,6 +7,10 @@ from datetime import datetime, timezone, timedelta
 import pytz
 from dotenv import load_dotenv
 import os
+from apscheduler.schedulers.background import BackgroundScheduler
+
+scheduler = BackgroundScheduler()
+
 
 app = Flask(__name__)
 CORS(app)
@@ -23,7 +27,8 @@ db = SQLAlchemy(app)
 CURRENT_CODE = None
 GEOfENCE = {}
 CURRENT_TIME = None
-
+CURRENT_SESSION_ID = None
+TIME = None
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key= True)
@@ -37,9 +42,25 @@ class User(db.Model):
 
 pacific = pytz.timezone("US/Pacific")
 
+
+class ClassSession(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(50), nullable=False)
+    lat = db.Column(db.Float, nullable=False)
+    lng = db.Column(db.Float, nullable=False)
+    radius = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(pacific))
+    # Optional: other fields (e.g., teacher id, duration, end time, etc.)
+    checkins= db.relationship('CheckIn', backref='session', lazy = True)
+
+    def __repr__(self):
+        return f"<ClassSession {self.code} at {self.created_at}>"
+
+
 class CheckIn(db.Model):
     row = db.Column (db.Integer, primary_key = True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
+    session_id = db.Column(db.Integer,  db.ForeignKey('class_session.id'), nullable = False)
     lat = db.Column(db.Float, nullable = False)
     lng = db.Column(db.Float, nullable = False)
     timestamp = db.Column(db.DateTime, nullable = False, default= lambda: datetime.now(pacific))
@@ -61,6 +82,40 @@ class CheckIn(db.Model):
 #     "lng": -740.0060,
 #     "radius": 1000  # in meters
 # }
+
+def do_ping():
+    print("class in 1 min")
+def ping_students():
+
+    print("ticking time")
+    TIME = datetime.now(pacific) + timedelta(seconds= 60)
+
+    reminder_time = TIME - timedelta(seconds = 30)
+    ping  = "ping"
+    if reminder_time > datetime.now(pacific):
+        scheduler.add_job(do_ping, 'date', run_date=reminder_time)
+        print(f"Ping job scheduled for {reminder_time.isoformat()}")
+    else:
+        print("Warning Reminder time is in the past; ping is not scheduled")
+    
+    return {"status": "Ping scheduled", "reminder_time": reminder_time.isoformat()}
+
+
+
+
+
+
+
+@app.route('/api/session', methods = ['GET'])
+def get_session():
+    if not GEOfENCE or CURRENT_TIME is None:
+        return jsonify({"status": "Error", "message": "No active session"}), 400
+    
+    return jsonify({
+        "status": "success", 
+        "classroom": GEOfENCE,
+        "session_time" : CURRENT_TIME.isoformat()
+    })
 
 def calc(lat1, lon1, lat2, lon2):
     """
@@ -96,7 +151,7 @@ def calc(lat1, lon1, lat2, lon2):
 
 @app.route('/api/setsession', methods=['POST'])
 def set_session():
-    global CURRENT_CODE, GEOfENCE, CURRENT_TIME
+    global CURRENT_CODE, GEOfENCE, CURRENT_TIME, CURRENT_SESSION_ID
     data = request.get_json()
 
     print (data)
@@ -123,9 +178,15 @@ def set_session():
         "radius": radius,
     }
     CURRENT_TIME = datetime.now(pacific)
+    #push to session data base to log session
+    new_session = ClassSession(code = code, lat= lat, lng = lng, radius = radius)
+    db.session.add(new_session)
+    db.session.commit()
+    CURRENT_SESSION_ID = new_session.id
+
     print(f"Set current attendance code: {CURRENT_CODE}")
     print(GEOfENCE)
-    return jsonify({"status": "Success", "message": "Attendance code set", "current_code": CURRENT_CODE, "classroom": GEOfENCE,"session_time" : CURRENT_TIME.isoformat()})
+    return jsonify({"status": "Success", "message": "Attendance code set", "current_code": CURRENT_CODE, "classroom": GEOfENCE,"session_time" : CURRENT_TIME.isoformat(), "session_id": CURRENT_SESSION_ID})
 
 
 @app.route('/api/attendance', methods=['POST'])
@@ -191,6 +252,11 @@ def check_in():
 
 
     user_id = user.id
+
+    if not CURRENT_SESSION_ID:
+        return jsonify({"status": "Error", "message": "No session_id provided"}), 400
+
+    
     
     campus_lat = GEOfENCE["lat"]
     campus_lng = GEOfENCE["lng"]
@@ -207,7 +273,7 @@ def check_in():
     if distance <= radius:
         # the location is within the acceptable range.
         #log the valid check-in into a database
-        check_in_record = CheckIn(user_id = user_id, lat=user_lat, lng=user_lng, timestamp=datetime.now(pacific), distance=distance, arrival = arrival_status)
+        check_in_record = CheckIn(user_id = user_id, session_id = CURRENT_SESSION_ID, lat=user_lat, lng=user_lng, timestamp=datetime.now(pacific), distance=distance, arrival = arrival_status)
         db.session.add(check_in_record)
         db.session.commit()
 
@@ -237,4 +303,6 @@ def check_in():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  #creates all defined tables if they don't exist
+    scheduler.start()
+    ping_students()
     app.run(debug=True, port= 5001, host='0.0.0.0')
