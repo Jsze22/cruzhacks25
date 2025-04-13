@@ -11,6 +11,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 import csv
 
 
+
 scheduler = BackgroundScheduler()
 
 
@@ -31,6 +32,15 @@ GEOfENCE = {}
 CURRENT_TIME = None
 CURRENT_SESSION_ID = None
 TIME = None
+
+class StudentRoster(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), nullable=False)
+    email = db.Column(db.String(120), unique=True, nullable=False)
+
+    def __repr__(self):
+        return f"<StudentRoster {self.username}>"
+
 
 class User(db.Model):
     id = db.Column(db.Integer, primary_key= True)
@@ -99,6 +109,31 @@ class CheckIn(db.Model):
 #         print("Warning Reminder time is in the past; ping is not scheduled")
     
 #     return {"status": "Ping scheduled", "reminder_time": reminder_time.isoformat()}
+
+
+def import_students_from_csv(filepath):
+    print("Opening:", filepath)
+    if not os.path.exists(filepath):
+        print("❌ File not found!")
+        return
+
+    with open(filepath, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        print("Headers:", reader.fieldnames)
+
+        for row in reader:
+            print("Processing row:", row)
+            exists = StudentRoster.query.filter_by(email=row['email']).first()
+            if not exists:
+                student = StudentRoster(username=row['username'], email=row['email'])
+                db.session.add(student)
+                print("➕ Added:", student.username, student.email)
+            else:
+                print("⚠️ Already exists:", row['email'])
+
+        db.session.commit()
+        print("✅ Students imported successfully.")
+
 
 
 @app.route('/api/late-report', methods=['GET'])
@@ -298,6 +333,13 @@ def check_in():
     if not email:
         return jsonify({"status": "Error", "message": "No email provided"}), 400
     
+    inclass= StudentRoster.query.filter_by(email = email, username=name).first()
+
+
+    if not inclass:
+        return jsonify({"status": "Error", "message" : "Not a student from this class"}), 400
+
+    
     user = User.query.filter_by(email = email).first()
     if not user:
         try:
@@ -362,6 +404,7 @@ def check_in():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  #creates all defined tables if they don't exist
+        import_students_from_csv("./students.csv")
         scheduler.start()
         ping_students_on_startup()
     app.run(debug=True, port= 5001, host='0.0.0.0')
