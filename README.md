@@ -6,7 +6,8 @@
 2. Put host url into config.tsx
 3. Make sure npm is installed
 4. npm install
-5. To run the code: npx expo start
+5. Run the command `cd slug_attendance`
+6. To run the command `npx expo start` in the terminal
 
 ### backend
 1. find requirements.txt folder in the backend folder
@@ -15,6 +16,11 @@
 4. To run the code: python app.py
 5. "Instance" folder will show up, and that's where the database is
 6. sqlite extension on VScode is recommended
+
+### for mobile phone (iOS for now)
+1. download the app "Expo Go" on the mobile phone
+2. after runnning the command `npx expo start` (from step 6 in frontend section), a QR code will pop up in the terminal
+3. open the camera app of your mobile phone and scan that QR code, which will lead you to Expo Go
 
 ## Overview
 ### Attendance
