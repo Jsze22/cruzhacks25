@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import os
 from apscheduler.schedulers.background import BackgroundScheduler
 import csv
+from models import db, StudentRoster, User, ClassSession,CheckIn
 
 
 
@@ -21,7 +22,8 @@ CORS(app)
 # Configure SQLite database
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///attendance.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
+db.init_app(app)
+# db = SQLAlchemy(app)
 
 
 
@@ -33,55 +35,12 @@ CURRENT_TIME = None
 CURRENT_SESSION_ID = None
 TIME = None
 
-class StudentRoster(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), nullable=False)
-    email = db.Column(db.String(120), unique=True, nullable=False)
-
-    def __repr__(self):
-        return f"<StudentRoster {self.username}>"
-
-
-class User(db.Model):
-    id = db.Column(db.Integer, primary_key= True)
-    username = db.Column(db.String(80), unique= True, nullable= False)
-    email = db.Column(db.String(120), unique = True, nullable = False)
-    checkins = db.relationship('CheckIn', backref = 'user', lazy = True)
-
-    def __repr__(self):
-        return f"<User {self.username}>"
 
 
 pacific = pytz.timezone("US/Pacific")
 
 
-class ClassSession(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    code = db.Column(db.String(50), nullable=False)
-    lat = db.Column(db.Float, nullable=False)
-    lng = db.Column(db.Float, nullable=False)
-    radius = db.Column(db.Integer, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(pacific))
-    # Optional: other fields (e.g., teacher id, duration, end time, etc.)
-    checkins= db.relationship('CheckIn', backref='session', lazy = True)
 
-    def __repr__(self):
-        return f"<ClassSession {self.code} at {self.created_at}>"
-
-
-class CheckIn(db.Model):
-    row = db.Column (db.Integer, primary_key = True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable = False)
-    session_id = db.Column(db.Integer,  db.ForeignKey('class_session.id'), nullable = False)
-    lat = db.Column(db.Float, nullable = False)
-    lng = db.Column(db.Float, nullable = False)
-    timestamp = db.Column(db.DateTime, nullable = False, default= lambda: datetime.now(pacific))
-    distance = db.Column(db.Float)
-    arrival = db.Column(db.String, nullable = False)
-
-
-    def __repr__(self):
-        return f"<Checkin user:{self.user_id} at {self.timestamp}>"
 
 # GEOfENCE = {
 #     "lat": 40.7128,
@@ -110,6 +69,30 @@ class CheckIn(db.Model):
     
 #     return {"status": "Ping scheduled", "reminder_time": reminder_time.isoformat()}
 
+
+@app.route('/api/checkins', methods = ['GET'])
+def get_all_checkins():
+    checkins =(
+        db.session.query(CheckIn, User.username.label("user_name"), ClassSession.code.label("session_code"), ClassSession.created_at.label("session_created_at"))
+        .join(User, CheckIn.user_id == User.id)
+        .join(ClassSession, CheckIn.session_id == ClassSession.id)
+        .order_by(CheckIn.timestamp.desc())
+        .all()
+    )
+
+    result = []
+
+    for checkin, user_name, session_code, session_time in checkins:
+        result.append({
+            "username": user_name,
+            "arrival": checkin.arrival,
+            "timestamp": checkin.timestamp.isoformat(),
+            "session_code": session_code,
+            "session_time": session_time.isoformat(),
+            "distance" :round(checkin.distance, 2)
+        })
+
+    return jsonify(result)
 
 def import_students_from_csv(filepath):
     print("Opening:", filepath)
