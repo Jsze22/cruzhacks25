@@ -83,22 +83,48 @@ class CheckIn(db.Model):
 #     "radius": 1000  # in meters
 # }
 
-def do_ping():
-    print("class in 1 min")
-def ping_students():
+# def do_ping():
+#     print("class in 1 min")
+# def ping_students():
 
-    print("ticking time")
-    TIME = datetime.now(pacific) + timedelta(seconds= 60)
+#     TIME = datetime.now(pacific) + timedelta(seconds= 60)
 
-    reminder_time = TIME - timedelta(seconds = 30)
-    ping  = "ping"
-    if reminder_time > datetime.now(pacific):
-        scheduler.add_job(do_ping, 'date', run_date=reminder_time)
-        print(f"Ping job scheduled for {reminder_time.isoformat()}")
-    else:
-        print("Warning Reminder time is in the past; ping is not scheduled")
+#     reminder_time = TIME - timedelta(seconds = 30)
+#     if reminder_time > datetime.now(pacific):
+#         scheduler.add_job(do_ping, 'date', run_date=reminder_time)
+#         print(f"Ping job scheduled for {reminder_time.isoformat()}")
+#     else:
+#         print("Warning Reminder time is in the past; ping is not scheduled")
     
-    return {"status": "Ping scheduled", "reminder_time": reminder_time.isoformat()}
+#     return {"status": "Ping scheduled", "reminder_time": reminder_time.isoformat()}
+
+REMINDER_TIME = None
+SHOULD_PING = False
+
+def do_ping():
+    global SHOULD_PING
+    SHOULD_PING = True
+    print("🔔 Ping activated!")
+
+@app.route('/api/ping-status')
+def ping_status():
+    global SHOULD_PING
+    if SHOULD_PING:
+        SHOULD_PING = False
+        return jsonify({"shouldPing": True, "reminder_time": REMINDER_TIME.isoformat()})
+    return jsonify({"shouldPing": False})
+
+def ping_students_on_startup():
+    global REMINDER_TIME
+    # Simulate a class 1 min from now
+    CLASS_TIME = datetime.now(pacific) + timedelta(seconds=60)
+    REMINDER_TIME = CLASS_TIME - timedelta(seconds=30)
+
+    if REMINDER_TIME > datetime.now(pacific):
+        scheduler.add_job(do_ping, 'date', run_date=REMINDER_TIME)
+        print(f"✅ Ping scheduled for {REMINDER_TIME.isoformat()}")
+    else:
+        print("⚠️ Reminder time is in the past; ping not scheduled")
 
 
 
@@ -303,6 +329,6 @@ def check_in():
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()  #creates all defined tables if they don't exist
-    scheduler.start()
-    ping_students()
+        scheduler.start()
+        ping_students_on_startup()
     app.run(debug=True, port= 5001, host='0.0.0.0')

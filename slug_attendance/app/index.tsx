@@ -11,6 +11,7 @@ import { useRef, useCallback, useEffect } from 'react';
 import { Image } from 'expo-image';
 import Button from '@/components/Button';
 import * as Notifications from 'expo-notifications';
+import config from "../config";
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -28,11 +29,41 @@ const PatternBackground = require('@/assets/images/ucsc_logo.png');
 const GRID_ROWS = 14;
 const GRID_COLS = 10;
 
+
+
+
 export default function Index() {
   const router = useRouter();
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${config.BACKEND_URL}/api/ping-status`);
+        const data = await res.json();
+  
+        if (data.shouldPing) {
+          console.log("Ping received from backend!");
+  
+          await Notifications.scheduleNotificationAsync({
+            content: {
+              title: "⏰ Class Reminder",
+              body: "Tap to view travel estimates to class.",
+              data: { screen: "ETAPage" },
+            },
+            trigger: null, // Trigger immediately
+          });
+        }
+      } catch (err) {
+        console.error("Ping check failed:", err);
+      }
+    }, 10000); // check every 10 seconds
+  
+    return () => clearInterval(interval);
+  }, []);
+  
 
   useEffect(() => {
     Animated.loop(
